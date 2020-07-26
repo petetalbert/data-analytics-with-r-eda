@@ -1,0 +1,216 @@
+---
+title: "Office Ratings"
+author: "Pete Talbert"
+date: "4/28/2020"
+output: word_document:
+  reference_docx: "template.docx"
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.width = 5, message = FALSE, warning = FALSE, cache = FALSE, dpi = 700)
+
+library(tidyverse)
+library(scales)
+library(knitr)
+
+theme_set(theme_minimal(base_size = 10))
+
+office_ratings <- read_csv("data/office_ratings.csv")
+```
+
+## How many rows are in these files?
+
+Sometimes I will say records instead of rows and fields instead of columns.
+
+```{r}
+office_ratings %>% 
+  count()
+```
+
+## How many episodes in each season?
+
+```{r}
+office_ratings %>% 
+  mutate(season = as_factor(season)) %>% 
+  count(season) %>% 
+  ggplot(aes(x = season, y = n)) +
+  geom_col()
+```
+
+## Why are there only 14 episodes in season 4?
+
+```{r}
+office_ratings %>% 
+  filter(season == 4)
+```
+
+
+Below I present analysis of The Office television series that ran on NBC from 2005 to 2013. The data is grouped by season and episode, with IMDB ratings, and total IMDB votes.
+
+## How many episodes in each season?
+
+```{r}
+office_ratings %>% 
+  mutate(season = as_factor(season)) %>% # SOMETHING NEW INTRODUCED
+  count(season) %>% 
+  ggplot(aes(x = season, y = n)) +
+  geom_col(fill = "#00828A", alpha = 0.8) +
+  labs(
+    title = "Seasons 1 and 4 were particularly low",
+    subtitle = "Count of episodes by season of The Office",
+    x = "Season",
+    y = "Number of episodes"
+  ) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.y = element_blank())
+```
+
+Why are there only 14 episodes in season 4? According to [Wikipedia](https://en.wikipedia.org/wiki/List_of_The_Office_(American_TV_series)_episodes#Episodes), the 2007-2008 Writers Guild of America strike shut down production for nearly five months in the middle of the season. 
+
+## What was the average IMDB rating of episodes by season?
+
+```{r}
+office_ratings %>% 
+  mutate(season = as_factor(season)) %>% 
+  group_by(season) %>% # SOMETHING NEW INTRODUCED
+  summarize(avg_imdb_rating = mean(imdb_rating)) %>% # SOMETHING NEW INTRODUCED
+  ungroup() %>% 
+  ggplot(aes(x = season, y = avg_imdb_rating, group = 1)) +
+  geom_line(size = 1) +
+  geom_point(size = 1.5) +
+  scale_y_continuous(breaks = seq(0, 10, 2), limits = c(0, 10)) +
+  labs(
+    title = "IMDB ratings remained fairly stead with a peak in season 4",
+    subtitle = "Average IMDB rating of episodes by season of The Office",
+    x = "Season",
+    y = "Average IMDB rating"
+  ) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.y = element_blank())
+  
+```
+
+## What was the trend of IMDB ratings within a season?
+
+```{r}
+office_ratings %>% 
+  mutate(season = as_factor(season)) %>% 
+  ggplot(aes(x = episode, y = imdb_rating, color = season)) +
+  geom_line(size = 1) + # SOMETHING NEW INTRODUCED
+  geom_point(size = 1.5) +
+  scale_x_continuous(breaks = seq(0, 25, 5)) +
+  scale_y_continuous(breaks = seq(0, 10, 2), limits = c(0, 10)) +
+  scale_color_viridis_d() +
+  labs(
+    title = "No real trend of IMDB rating within seasons, although\nsome do peak at the end",
+    subtitle = "IMDB rating of episodes by season of The Office",
+    x = "Episode no.",
+    y = "IMDB rating",
+    color = "Season"
+  ) +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank())
+```
+
+## What were the top ten most popular episodes?
+
+```{r}
+office_ratings %>% 
+  arrange(desc(imdb_rating)) %>% 
+  head(10) %>% 
+  mutate(`#` = row_number()) %>% 
+  select(`#`, Season = season, Episode = episode, Title = title, `IMDB Rating` = imdb_rating) %>% 
+  kable() 
+```
+
+## Is there a relationship between the IMDB rating and the number of votes?
+
+```{r}
+
+office_ratings %>% 
+  filter(total_votes < 4000) %>% 
+  ggplot(aes(x = total_votes, y = imdb_rating)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+
+```{r fig.height=5}
+office_ratings %>% 
+  ggplot(aes(x = total_votes, y = imdb_rating)) +
+  geom_point() + # SOMETHING NEW INTRODUCED
+  scale_x_log10(labels = comma_format()) + # SOMETHING NEW INTRODUCED
+  geom_smooth(method = "loess", se = FALSE) + # SOMETHING NEW INTRODUCED
+  labs(
+    title = "There is a positive relationship between IMDB\nratings and total votes",
+    subtitle = "IMDB ratings and total votes of The Office",
+    x = "Total votes",
+    y = "IMDB rating",
+    caption = "Note: Line is a loess smoothing curve."
+  ) +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank()) -> p
+
+p
+
+# ggsave("office_imdb.png", p, height = 5, width = 6.5, dpi = 1000, device = "png")
+```
+
+## Working with median IMDB ratings
+
+Here we see the median and mean are quality stats because they accurately depict the most common/typical imdb rating (there's a normal distribution).
+
+```{r}
+office_ratings_summary <- office_ratings %>% 
+  summarize(avg_imdb_rating = mean(imdb_rating),
+            median_imdb_rating = median(imdb_rating))
+
+office_ratings %>%
+  ggplot(aes(x = imdb_rating)) +
+  geom_histogram(binwidth = 0.1, color = "white") +
+  geom_vline(data = office_ratings_summary, aes(xintercept = avg_imdb_rating), linetype = 5) + # geom_vline()
+  geom_vline(data = office_ratings_summary, aes(xintercept = median_imdb_rating), linetype = 6)
+
+
+office_ratings_median <- office_ratings %>% 
+  mutate(above_median = if_else(imdb_rating >= office_ratings_summary$median_imdb_rating, "Above median", "Below median"))
+
+
+office_ratings_median %>% 
+  mutate(above_median = fct_rev(above_median),
+         season = as.factor(season)) %>% 
+  count(season, above_median) %>% 
+  ggplot(aes(x = season, y = n, fill = above_median)) +
+  geom_col(position = "fill")
+
+
+```
+
+What proportion of lower IMDB ratings happened after season 8?
+
+```{r}
+office_ratings_median %>% 
+  filter(above_median == "Below median") %>% 
+  count(season) %>% 
+  mutate(season = as.factor(season)) %>% 
+  ggplot(aes(x = season, y = n, group = 1)) +
+  geom_line(color = "dark gray") +
+  geom_point(color = "dark gray") +
+  scale_y_continuous(limits = c(0, NA))
+
+```
+
+
+```{r}
+office_ratings %>% 
+  arrange(desc(imdb_rating)) %>% 
+  head(5) %>% 
+  kable(caption = "Top Five Episodes by IMDB Ratings",
+        row.names = TRUE,
+        col.names = c("Season", "Episode No.", "Title", "IMDB Rating", "Total Votes", "Air Date"),
+        format.args = list(big.mark = ",", ))
+```
+
+
+
+
