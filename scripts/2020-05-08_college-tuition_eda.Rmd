@@ -6,7 +6,7 @@ output: word_document
 ---
 
 ```{r, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, fig.width = 5, message = FALSE, warning = FALSE, cache = FALSE, dpi = 1000)
+knitr::opts_chunk$set(echo = FALSE, fig.width = 5, message = FALSE, warning = FALSE, cache = FALSE, dpi = 700)
 
 library(tidyverse)
 library(scales)
@@ -14,14 +14,254 @@ library(knitr)
 
 theme_set(theme_minimal(base_size = 10))
 
-tuition_cost <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-03-10/tuition_cost.csv')
+tuition_cost <- read_csv("data/tuition_cost.csv")
 
-tuition_income <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-03-10/tuition_income.csv') 
+salary_potential <- read_csv("data/salary_potential.csv")
 
-salary_potential <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-03-10/salary_potential.csv')
-
-# historical_tuition <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-03-10/historical_tuition.csv')
-
-diversity_school <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-03-10/diversity_school.csv')
+diversity_school <- read_csv("data/diversity_school.csv")
 
 ```
+
+# Tuition cost
+
+count - fct_reorder - geom_col() - coord_flip() TECHNIQUE
+
+
+```{r}
+tuition_cost %>% 
+  count(state_code) %>% 
+  mutate(state_code = fct_reorder(state_code, n)) %>% 
+  ggplot(aes(x = state_code, y = n)) +
+  geom_col() +
+  coord_flip()
+
+tuition_cost %>% 
+  count(state_code, type) %>% 
+  mutate(state_code = fct_reorder(state_code, n, .fun = sum)) %>% 
+  ggplot(aes(x = state_code, y = n, fill = type)) +
+  geom_col() +
+  coord_flip()
+
+
+tuition_cost %>% 
+  count(state_code, type) %>% 
+  mutate(state_code = fct_reorder(state_code, n, .fun = sum)) %>% 
+  ggplot(aes(x = state_code, y = n, fill = type)) +
+  geom_col(position = "fill") +
+  coord_flip()
+
+```
+
+How would we sort highest to lowest proportion of state?
+
+```{r}
+tuition_cost %>% 
+  count(state_code, type) %>% 
+  group_by(state_code) %>% 
+  mutate(pct = n / sum(n)) %>% 
+  ungroup() %>% 
+  mutate(public_pct = if_else(type == "Public", pct, 0),
+         state_code = fct_reorder(state_code, public_pct, .fun = max)) %>% 
+  ggplot(aes(x = state_code, y = n, fill = type)) +
+  geom_col(position = "fill") +
+  coord_flip()
+```
+
+```{r}
+tuition_cost %>% 
+  count(state_code, type) %>% 
+  group_by(state_code) %>% 
+  mutate(pct = n / sum(n)) %>% 
+  ungroup() %>% 
+  filter(type == "Public")
+```
+
+## Introduce `inner_join()` with state dataset
+
+
+```{r}
+states <- bind_cols(state_code = state.abb, state_region = state.region, state_division = state.division)
+
+
+tuition_cost_region <- tuition_cost %>% 
+  inner_join(states, by = "state_code")
+```
+
+Perfect example of inner vs left join!
+
+```{r}
+tuition_cost_region %>% 
+  count(state_region, state_code, type) %>% 
+  group_by(state_code) %>% 
+  mutate(pct = n / sum(n)) %>% 
+  ungroup() %>% 
+  mutate(public_pct = if_else(type == "Public", pct, 0),
+         state_code = fct_reorder(state_code, public_pct, .fun = max)) %>% 
+  ggplot(aes(x = state_code, y = n, fill = type)) +
+  geom_col(position = "fill") +
+  coord_flip() +
+  facet_wrap(~ state_region, scales = "free_y")
+
+tuition_cost_region %>% 
+  count(state_division, state_code, type) %>% 
+  group_by(state_code) %>% 
+  mutate(pct = n / sum(n)) %>% 
+  ungroup() %>% 
+  mutate(public_pct = if_else(type == "Public", pct, 0),
+         state_code = fct_reorder(state_code, public_pct, .fun = max)) %>% 
+  ggplot(aes(x = state_code, y = n, fill = type)) +
+  geom_col(position = "fill") +
+  coord_flip() +
+  facet_wrap(~ state_division, scales = "free_y")
+
+tuition_cost_region %>% 
+  count(state_division, state_code, type) %>% 
+  group_by(state_code) %>% 
+  mutate(pct = n / sum(n)) %>% 
+  ungroup() %>% 
+  mutate(public_pct = if_else(type == "Public", pct, 0), # NEED TO FIND A BETTER WAY TO ILLUSTRATE THIS.
+         state_code = fct_reorder(state_code, public_pct, .fun = max)) %>% 
+  ggplot(aes(x = state_code, y = n, fill = type)) +
+  geom_col() +
+  coord_flip() +
+  facet_wrap(~ state_division, scales = "free_y")
+```
+
+
+NA values for state!!!
+
+## Let's hone in on the upper midwest just to make things a little easier
+
+```{r}
+tuition_cost_um <- tuition_cost %>% 
+  filter(state_code %in% c("MN", "WI", "ND", "SD", "IA"))
+
+tuition_cost_um %>% 
+  count(state_code)
+
+tuition_cost_um %>% 
+  count(state_code, type)
+
+tuition_cost_um %>% 
+  count(state_code, type, degree_length)
+
+```
+
+## Who's the most expensive in the upper midwest?
+
+```{r}
+tuition_cost_um %>% 
+  arrange(desc(out_of_state_total)) %>% 
+  head(10)
+```
+
+## Relationship between room and board and tuition?
+
+```{r}
+tuition_cost %>% 
+  ggplot(aes(x = room_and_board, y = out_of_state_tuition)) +
+  geom_point()
+```
+
+
+```{r}
+tuition_cost %>% 
+  ggplot(aes(x = room_and_board, y = out_of_state_tuition, color = type)) +
+  geom_point()
+
+tuition_cost %>% 
+  ggplot(aes(x = room_and_board, y = out_of_state_tuition, color = type)) +
+  geom_point() +
+  scale_y_log10()
+
+tuition_cost %>% 
+  ggplot(aes(x = room_and_board, y = out_of_state_tuition, color = type)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+Wow, seems like although private universities are obviously more expensive, their room and board costs may be relatively cheaper. How would we try to determine that?
+
+```{r}
+# more uses for mutate
+
+tuition_cost %>% 
+  mutate(upper_mid = if_else(state_code %in% c("MN", "WI", "ND", "SD", "IA"), "Y", "N"),
+         room_tuition_ratio = room_and_board / out_of_state_tuition) %>% 
+  ggplot(aes(x = room_tuition_ratio, fill = type)) +
+  geom_histogram(binwidth = 0.1)
+
+
+tuition_cost %>% 
+  mutate(upper_mid = if_else(state_code %in% c("MN", "WI", "ND", "SD", "IA"), "Y", "N"),
+         room_tuition_ratio = room_and_board / out_of_state_tuition) %>% 
+  #filter(room_tuition_ratio < 3) %>% 
+  ggplot(aes(x = room_tuition_ratio, fill = type)) +
+  geom_histogram(binwidth = 0.1) +
+  scale_x_log10()
+
+tuition_cost %>% 
+  mutate(upper_mid = if_else(state_code %in% c("MN", "WI", "ND", "SD", "IA"), "Y", "N"),
+         room_tuition_ratio = room_and_board / out_of_state_tuition) %>% 
+  filter(room_tuition_ratio < 2) %>% 
+  ggplot(aes(x = room_tuition_ratio, fill = type)) +
+  geom_histogram(binwidth = 0.1)
+
+# what happens when we have NA values????
+
+tuition_cost %>% 
+  mutate(upper_mid = if_else(state_code %in% c("MN", "WI", "ND", "SD", "IA"), "Y", "N"),
+         room_tuition_ratio = room_and_board / out_of_state_tuition) %>% 
+  group_by(type) %>% 
+  summarize(mean_ratio = mean(room_tuition_ratio),
+            median_ratio = median(room_tuition_ratio))
+
+tuition_cost %>% 
+  mutate(upper_mid = if_else(state_code %in% c("MN", "WI", "ND", "SD", "IA"), "Y", "N"),
+         room_tuition_ratio = room_and_board / out_of_state_tuition) %>% 
+  filter(!is.na(room_tuition_ratio)) %>% 
+  group_by(type) %>% 
+  summarize(mean_ratio = mean(room_tuition_ratio),
+            median_ratio = median(room_tuition_ratio),
+            n = n())
+```
+
+This shows that on average, room and board is relatively cheaper at private universities...
+
+```{r}
+tuition_cost %>% 
+  mutate(upper_mid = if_else(state_code %in% c("MN", "WI", "ND", "SD", "IA"), "Y", "N"),
+         room_tuition_ratio = room_and_board / out_of_state_tuition) %>% 
+  ggplot(aes(x = room_tuition_ratio, y = out_of_state_tuition)) + 
+  geom_point()
+
+#mega transformed!!!
+tuition_cost %>% 
+  mutate(upper_mid = if_else(state_code %in% c("MN", "WI", "ND", "SD", "IA"), "Y", "N"),
+         room_tuition_ratio = room_and_board / out_of_state_tuition) %>% 
+  filter(room_tuition_ratio > 0.1) %>% 
+  ggplot(aes(x = room_tuition_ratio, y = out_of_state_tuition)) + 
+  geom_point() +
+  geom_smooth(method = "lm") +
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+It seems like universities who chargle less for tuition tend to have to charge more for room and board to make up the difference???
+
+# What does the public-private breakdown look like by state?
+
+```{r}
+tuition_cost_pp <- tuition_cost %>% 
+  filter(type %in% c("Public", "Private"))
+
+tuition_cost_pp %>% 
+  count(state_code, type) %>% 
+  group_by(state_code) %>% 
+  mutate(pct = n / sum(n)) %>% 
+  filter(type == "Public") %>% 
+  ggplot(aes(x = state_code, y = pct)) +
+  geom_col() +
+  coord_flip()
+```
+
