@@ -28,13 +28,14 @@ library(skimr)
 
 ```{r}
 
-tuition_cost
+tuition_cost 
 summary(tuition_cost)
 skim(tuition_cost)
 str(tuition_cost)
 glimpse(tuition_cost)
 
 diversity_school
+print(diversity_school, n = 11)
 summary(diversity_school)
 skim(diversity_school)
 str(diversity_school)
@@ -128,13 +129,33 @@ Works fine, but how in the world would I *plot* something like this? Would have 
 tuition_cost_um %>% 
   pivot_longer(cols = c(room_and_board, in_state_tuition, in_state_total, out_of_state_tuition, out_of_state_total), 
                names_to = "cost_type", 
-               values_to = "cost") %>% 
+               values_to = "cost") %>% filter(str_detect(name, "Iowa"))
   group_by(state, cost_type) %>% 
   summarize(avg_cost = mean(cost))
 ```
 
 Gotta deal with those NAs.
 
+## Introduce `pivot_wider()` with the diversity dataset
+
+```{r}
+diversity_school %>% 
+  pivot_wider(names_from = category, values_from = enrollment)
+# error: explain
+# filter NA college data
+diversity_school %>% 
+  pivot_wider(names_from = category, values_from = enrollment, values_fn = length) %>% View()
+
+diversity_school_non_na <- diversity_school %>% 
+  filter(!is.na(name))
+
+diversity_school_non_na %>% 
+  pivot_wider(names_from = category, 
+              values_from = enrollment) %>% 
+  print(., width = 300)
+
+
+```
 
 
 
