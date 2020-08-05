@@ -49,6 +49,16 @@ glimpse(salary_potential)
 
 ```
 
+```{r}
+print(tuition_cost, n = 15)
+
+summary(tuition_cost)
+skim(tuition_cost)
+
+str(tuition_cost)
+glimpse(tuition_cost)
+```
+
 
 # Tuition cost
 
