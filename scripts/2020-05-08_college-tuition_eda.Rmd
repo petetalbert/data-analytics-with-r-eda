@@ -16,11 +16,38 @@ theme_set(theme_minimal(base_size = 10))
 
 tuition_cost <- read_csv("data/tuition_cost.csv")
 
-salary_potential <- read_csv("data/salary_potential.csv")
-
 diversity_school <- read_csv("data/diversity_school.csv")
 
+salary_potential <- read_csv("data/salary_potential.csv")
+
+
+library(skimr)
 ```
+
+# Skim
+
+```{r}
+
+tuition_cost
+summary(tuition_cost)
+skim(tuition_cost)
+str(tuition_cost)
+glimpse(tuition_cost)
+
+diversity_school
+summary(diversity_school)
+skim(diversity_school)
+str(diversity_school)
+glimpse(diversity_school)
+
+salary_potential
+summary(salary_potential)
+skim(salary_potential)
+str(salary_potential)
+glimpse(salary_potential)
+
+```
+
 
 # Tuition cost
 
@@ -28,14 +55,17 @@ count - fct_reorder - geom_col() - coord_flip() TECHNIQUE
 
 
 ```{r}
-tuition_cost %>% 
+tuition_cost_um <- tuition_cost %>% 
+  filter(state_code %in% c("MN", "WI", "ND", "SD", "IA"))
+
+tuition_cost_um %>% 
   count(state_code) %>% 
   mutate(state_code = fct_reorder(state_code, n)) %>% 
   ggplot(aes(x = state_code, y = n)) +
   geom_col() +
   coord_flip()
 
-tuition_cost %>% 
+tuition_cost_um %>% 
   count(state_code, type) %>% 
   mutate(state_code = fct_reorder(state_code, n, .fun = sum)) %>% 
   ggplot(aes(x = state_code, y = n, fill = type)) +
@@ -43,7 +73,7 @@ tuition_cost %>%
   coord_flip()
 
 
-tuition_cost %>% 
+tuition_cost_um %>% 
   count(state_code, type) %>% 
   mutate(state_code = fct_reorder(state_code, n, .fun = sum)) %>% 
   ggplot(aes(x = state_code, y = n, fill = type)) +
@@ -55,7 +85,7 @@ tuition_cost %>%
 How would we sort highest to lowest proportion of state?
 
 ```{r}
-tuition_cost %>% 
+tuition_cost_um %>% 
   count(state_code, type) %>% 
   group_by(state_code) %>% 
   mutate(pct = n / sum(n)) %>% 
@@ -75,6 +105,38 @@ tuition_cost %>%
   ungroup() %>% 
   filter(type == "Public")
 ```
+
+## Introduce `pivot_longer()` with state dataset
+
+What if I wanted to compare the average costs by state for each type of cost column?
+
+```{r}
+tuition_cost_um %>% 
+  group_by(state) %>% 
+  summarize(mean(room_and_board), 
+            mean(in_state_tuition), 
+            mean(in_state_total), 
+            mean(out_of_state_tuition), 
+            mean(out_of_state_total))
+```
+
+Works fine, but how in the world would I *plot* something like this? Would have to go one at a time for each cost (because they're each in a different column).
+
+```{r}
+
+
+tuition_cost_um %>% 
+  pivot_longer(cols = c(room_and_board, in_state_tuition, in_state_total, out_of_state_tuition, out_of_state_total), 
+               names_to = "cost_type", 
+               values_to = "cost") %>% 
+  group_by(state, cost_type) %>% 
+  summarize(avg_cost = mean(cost))
+```
+
+Gotta deal with those NAs.
+
+
+
 
 ## Introduce `inner_join()` with state dataset
 
