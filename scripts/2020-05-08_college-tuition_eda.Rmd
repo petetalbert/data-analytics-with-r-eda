@@ -66,6 +66,14 @@ count - fct_reorder - geom_col() - coord_flip() TECHNIQUE
 
 
 ```{r}
+tuition_cost_um %>% 
+  count(state_code) %>% 
+  mutate(state_code = fct_reorder(state_code, n)) %>% 
+  ggplot(aes(x = state_code, y = n)) +
+  geom_col() +
+  coord_flip()
+
+
 tuition_cost_um <- tuition_cost %>% 
   filter(state_code %in% c("MN", "WI", "ND", "SD", "IA"))
 
@@ -332,12 +340,13 @@ tuition_cost %>%
 tuition_cost %>% 
   mutate(upper_mid = if_else(state_code %in% c("MN", "WI", "ND", "SD", "IA"), "Y", "N"),
          room_tuition_ratio = room_and_board / out_of_state_tuition) %>% 
-  filter(room_tuition_ratio > 0.1) %>% 
+  filter(room_tuition_ratio > 0.1, type != "For Profit") %>% 
   ggplot(aes(x = room_tuition_ratio, y = out_of_state_tuition)) + 
-  geom_point() +
-  geom_smooth(method = "lm") +
+  geom_point(aes(color = type), alpha = 0.5) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_smooth(method = "loess", se = FALSE) +
   scale_x_log10() +
-  scale_y_log10()
+  scale_y_log10(labels = comma_format())
 ```
 
 It seems like universities who chargle less for tuition tend to have to charge more for room and board to make up the difference???
