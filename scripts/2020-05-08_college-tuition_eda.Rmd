@@ -141,8 +141,6 @@ tuition_cost_um %>%
 Works fine, but how in the world would I *plot* something like this? Would have to go one at a time for each cost (because they're each in a different column).
 
 ```{r}
-
-
 tuition_cost_um %>% 
   pivot_longer(cols = c(room_and_board, in_state_tuition, in_state_total, out_of_state_tuition, out_of_state_total), 
                names_to = "cost_type", 
@@ -211,6 +209,36 @@ p
 ggsave("um-tuition.png", p, width = 6, height = 4, units = "in", dpi = 700)
 
 ```
+
+```{r}
+tuition_cost %>% 
+  filter(!is.na(room_and_board), state_code %in% c("MN", "WI", "ND", "SD", "IA")) %>% 
+  pivot_longer(cols = c(room_and_board, in_state_tuition, in_state_total, out_of_state_tuition, out_of_state_total),
+               names_to = "cost_type",
+               values_to = "cost") %>% 
+  group_by(state_code, cost_type) %>% 
+  summarize(avg_cost = mean(cost)) %>% 
+  ungroup() %>% 
+  mutate(state_code = fct_reorder(state_code, avg_cost)) %>% 
+  ggplot(aes(x = state_code, y = avg_cost, fill = state_code)) +
+  geom_col() +
+  coord_flip() +
+  facet_wrap(~ cost_type, nrow = 3) +
+  geom_text(aes(label = dollar(avg_cost, accuracy = 1)), size = 3, hjust = 1.1) +
+  scale_y_continuous(limits = c(0, NA), labels = dollar_format(), breaks = c(0, 10000, 20000, 30000)) +
+  scale_fill_brewer(palette = 16, type = "seq") +
+  theme_minimal() +
+  theme(legend.position = "none", 
+        panel.grid.major.x = element_blank(), 
+        panel.grid.minor.y = element_blank(), plot.title = element_text(face = "bold")) +
+  labs(
+    title = "Iowa has most expensive costs in the Upper-Midwest",
+    subtitle = "Avg tuition and room and board by state",
+    x = element_blank(),
+    y = element_blank()
+  )
+```
+
 
 
 ```{r}
