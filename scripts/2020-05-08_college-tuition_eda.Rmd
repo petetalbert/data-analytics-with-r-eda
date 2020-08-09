@@ -458,7 +458,9 @@ tuition_cost_pp %>%
   coord_flip()
 ```
 
-## In-state vs. out-of-state tuition depending on public or private.
+## In-state vs. out-of-state tuition depending on public or private
+
+Public tends to give lower tuition for in-state; Private tends to give higher tuition for in-state
 
 ```{r}
 
