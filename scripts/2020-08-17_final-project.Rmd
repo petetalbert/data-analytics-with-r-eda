@@ -1,0 +1,122 @@
+---
+title: "College tuition, diversity, and pay data"
+author: "Pete Talbert"
+date: "8/20/2020"
+output: 
+  word_document:
+    reference_docx: "../templates/word-styles-office-2016.docx"
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.width = 6.5, message = FALSE, warning = FALSE, cache = FALSE, dpi = 700)
+
+library(tidyverse)
+library(scales)
+library(knitr)
+library(skimr)
+
+theme_set(theme_minimal(base_size = 10))
+
+tuition_cost <- read_csv("data/tuition_cost.csv")
+salary_potential <- read_csv("data/salary_potential.csv")
+
+```
+
+## Introduction
+
+For my final project, I chose to look the tuition cost data and the salary potential data. Specifically, I honed in the top 6 states with the most colleges and universities. Also for purposes of simplification, I excluded universities whose type was "For Profit" or "Other." These states closely mirror the [state rankings by population](https://en.wikipedia.org/wiki/List_of_states_and_territories_of_the_United_States_by_population), except for Florida, which is the third most populous state; Illinois sixth, but tied for fifth with Ohio for most colleges and universities.
+
+## Tuition cost
+
+```{r}
+tuition_cost_top <- tuition_cost %>% 
+  filter(!type %in% c("For Profit", "Other")) %>% 
+  add_count(state) %>% 
+  mutate(state_dense_rank = dense_rank(desc(n))) %>% 
+  filter(state_dense_rank <= 5)
+
+tuition_cost_top %>% 
+  mutate(state = fct_rev(state)) %>% 
+  ggplot(aes(x = state, y = in_state_tuition, color = degree_length)) +
+  geom_point(size = 3, alpha = 0.65) +
+  scale_y_continuous(limits = c(0, NA), labels = dollar_format()) +
+  scale_color_brewer(palette = 6, type = "qual") +
+  facet_wrap(~ type, ncol = 1) +
+  coord_flip() +
+  theme(legend.position = "bottom", panel.grid.minor.x = element_blank(), plot.title = element_text(face = "bold")) +
+  labs(
+    title = "All public institutions are below $20,000, private insitutions vary widely",
+    subtitle = "Top 5 states with most universities' in-state tuition by type and degree length",
+    x = element_blank(),
+    y = element_blank(),
+    color = element_blank(),
+    caption = "Each point represents an individual college or university."
+  )
+```
+
+## Relationship between room and board and tuition
+
+**Note:** many two-year institutions do not have room and board fees, so the following looks primarily at four-year schools.
+
+When we look at the relationship between room and board and in-state tuition, we see it very cleary depends on whether the institution is private or public. Private institutions have a strong linear relationship between the two costs: the more the room and board, the more in-state tuition. However, for public institutions, there is less of a positive correlation. In New York, for instance, there is not much of a relationship at all. The in-state tuition of a public New York university does not vary much at all, but the room and board fees vary considerably, from $10,000-18,000.
+
+```{r fig.height=5}
+tuition_cost_top %>% 
+  filter(!is.na(room_and_board) & !is.na(in_state_tuition), degree_length == "4 Year") %>% 
+  ggplot(aes(x = room_and_board, y = in_state_tuition, color = type)) +
+  scale_color_brewer(palette = 2, type = "qual") +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_x_continuous(labels = dollar_format()) +
+  scale_y_continuous(labels = dollar_format()) +
+  facet_wrap(~ state) +
+  theme(legend.position = "bottom", panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), plot.title = element_text(face = "bold"), axis.text = element_text(size = 6)) +
+  labs(
+    title = "Relationship between room and board and in-state tuition\ndepends on institution type",
+    subtitle = "Room and board and in-state tuition by state and tuition type",
+    x = "Room and board",
+    y = "In-state tuition",
+    color = element_blank(),
+    caption = "Each point represents an individual college or university.\n4-year institutions only."
+  )
+```
+
+### Room and board, in-state tuition ratio
+
+We can also see how these two costs differ by institution type when we divide the room and board cost by the in-state tuition. I call this the "room and board to in-state tuition ratio." If the number is 1, it means the room and board and tuition for institution are the same. When it's greater than 1, room and board is more, when it's less than one, in-state tuition is more. 
+
+Below I get the median ratio for each state. Here, we see the that the median ratio for private institutions hovers around 0.3; but for public institutions, it is closer to 1. This seems to say that public institutions charge more for room and board relative to tuition compared to private institutions; public institutions may be recovering some of the loss by charging less tuition by charging more for room and board.
+
+```{r}
+tuition_cost_top %>% 
+  filter(!is.na(room_and_board) & !is.na(in_state_tuition), degree_length == "4 Year") %>% 
+  mutate(cost_ratio = room_and_board / in_state_tuition) %>% 
+  group_by(state, type) %>% 
+  summarize(median_cost_ratio = median(cost_ratio)) %>% 
+  pivot_wider(names_from = "type", values_from = "median_cost_ratio") %>% 
+  kable(caption = "Median room and board to in-state tuition ratio by state", row.names = TRUE, col.names = c("State", "Private", "Public"), digits = 3)
+  
+```
+
+Below we can see that California really charges a lot for room and board relative to tuition; New York as well. This may be due to their real estate economies being so high.
+
+```{r}
+tuition_cost_top %>% 
+  filter(!is.na(room_and_board) & !is.na(in_state_tuition), degree_length == "4 Year") %>% 
+  mutate(cost_ratio = room_and_board / in_state_tuition) %>% 
+  ggplot(aes(x = type, y = cost_ratio, color = type)) +
+  geom_point(size = 3, alpha = 0.65) +
+  facet_wrap(~ state) +
+  coord_flip() +
+  scale_color_brewer(palette = 2, type = "qual") +
+  scale_y_continuous(breaks = seq(0, 3, by = 0.5)) +
+  theme(panel.spacing.x = unit(2, "lines"), legend.position = "none", panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), plot.title = element_text(face = "bold")) +
+  labs(
+    title = "Room and board costs more for public institutions relative to tuition",
+    subtitle = "Room and board to in-state tuition ratio by state",
+    x = element_blank(),
+    y = "Room and board to in-state tuition ratio",
+    color = element_blank(),
+    caption = "Each point represents an individual college or university.\n4-year institutions only."
+  )
+```

@@ -264,7 +264,6 @@ tuition_cost %>%
 ```{r}
 states <- bind_cols(state_code = state.abb, state_region = state.region, state_division = state.division)
 
-
 tuition_cost_region <- tuition_cost %>% 
   inner_join(states, by = "state_code") %>% 
   select(name, state, state_code, state_region, state_division, room_and_board, in_state_tuition)
@@ -466,3 +465,64 @@ Public tends to give lower tuition for in-state; Private tends to give higher tu
 
 ```
 
+# Diversity data
+
+add count to check for dups: `add_count()` and `distinct`.
+
+```{r}
+diversity_school %>% 
+  filter(!is.na(name), category == "Total Minority") %>% 
+  mutate(pct_soc = enrollment / total_enrollment) %>% 
+  group_by(name) %>% 
+  add_count() %>% View()
+
+diversity_school %>% 
+  filter(!is.na(name), category == "Total Minority") %>% 
+  mutate(pct_soc = enrollment / total_enrollment) %>% 
+  distinct(name)
+```
+
+schools with 0% SOC are jewish universities :-); universities with 100% SOC are historically Black colleges, and Native American colleges, or extremely small.
+
+```{r}
+diversity_school %>% 
+  filter(!is.na(name), category == "Total Minority") %>% 
+  mutate(pct_soc = enrollment / total_enrollment) %>% 
+  arrange(pct_soc)
+
+diversity_school %>% 
+  filter(!is.na(name), category == "Total Minority") %>% 
+  mutate(pct_soc = enrollment / total_enrollment) %>% 
+  arrange(desc(pct_soc))
+```
+
+Where are the top 10 large universities with the largest % of students of color?
+
+```{r}
+diversity_school %>% 
+  filter(!is.na(name), category == "Total Minority", total_enrollment >= 10000) %>% 
+  mutate(pct_soc = enrollment / total_enrollment) %>% 
+  arrange(desc(pct_soc)) %>% 
+  top_n(10, pct_soc)
+```
+
+What is their demographic make-up?
+
+```{r}
+
+```
+
+
+
+### Pennsylvania's private two-year institutions
+
+Many of the private, two-year institutions in Pennsylvania are technical colleges and trade schools; this makes sense as Pennsylvania has a large industrial and manufacturing economy. These private institutions are nearly all more expensive than public two-year options.
+
+```{r}
+tuition_cost_top %>% 
+  filter(state == "Pennsylvania", type == "Private", degree_length == "2 Year") %>% 
+  select(name, in_state_tuition) %>% 
+  arrange(desc(in_state_tuition)) %>% 
+  mutate(in_state_tuition = dollar(in_state_tuition)) %>% 
+  kable(caption = "Private two-year institutions in PA", row.names = TRUE, col.names = c("College Name", "In-state tuition"))
+```
