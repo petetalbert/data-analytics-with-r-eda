@@ -526,3 +526,93 @@ tuition_cost_top %>%
   mutate(in_state_tuition = dollar(in_state_tuition)) %>% 
   kable(caption = "Private two-year institutions in PA", row.names = TRUE, col.names = c("College Name", "In-state tuition"))
 ```
+
+
+
+```{r}
+salary_potential_top %>% 
+  ggplot(aes(x = mid_early_difference)) +
+  geom_histogram(binwidth = 2500) +
+  facet_wrap(~ state_name)
+```
+
+
+### Does in-state tuition predict early-career pay?
+
+```{r}
+salary_tuition %>% 
+  ggplot(aes(x = in_state_tuition, y = early_career_pay)) +
+  geom_point() +
+  scale_color_brewer(palette = 2, type = "qual")
+```
+
+No relationship, seemingly. The divide here is private vs. public
+
+```{r}
+salary_tuition %>% 
+  ggplot(aes(x = in_state_tuition, y = early_career_pay, color = type)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_brewer(palette = 2, type = "qual")
+```
+
+### Does out-of-state tuition predict early-career pay?
+
+```{r}
+salary_tuition %>% 
+  ggplot(aes(x = out_of_state_tuition, y = early_career_pay, color = type)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_brewer(palette = 2, type = "qual")
+```
+
+### Does in-state tuition predict mid-career pay?
+
+```{r}
+salary_tuition %>% 
+  ggplot(aes(x = in_state_tuition, y = mid_career_pay, color = type)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_brewer(palette = 2, type = "qual")
+```
+
+### Does out-of-state tuition predict mid-career pay?
+
+```{r}
+salary_tuition %>% 
+  ggplot(aes(x = out_of_state_tuition, y = mid_career_pay, color = type)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_brewer(palette = 2, type = "qual")
+```
+
+* On the low-end, public actually out-performs private in terms of career pay. But on the very upper end of tuition, private pays off.
+
+
+## dplyr vs. base R
+
+arrange
+
+```{r}
+tuition_cost %>% 
+  arrange(desc(out_of_state_total))
+
+tuition_cost[order(tuition_cost$out_of_state_total, decreasing = TRUE), , drop = FALSE]
+```
+
+group_by / summarize
+
+```{r}
+tuition_cost %>% 
+  group_by(state) %>% 
+  summarize(median_out_of_state_total = median(out_of_state_total))
+
+tuition_cost_by <- by(tuition_cost, tuition_cost$state, function(df) {
+  with(df, data.frame(state = state[[1]], median_out_of_state_total = median(out_of_state_total)))
+})
+
+str(tuition_cost_by)
+
+as_tibble(do.call(rbind, tuition_cost_by))
+```
+

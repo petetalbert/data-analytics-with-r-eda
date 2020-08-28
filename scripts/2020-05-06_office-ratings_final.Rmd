@@ -19,33 +19,6 @@ theme_set(theme_minimal(base_size = 10))
 office_ratings <- read_csv("data/office_ratings.csv")
 ```
 
-## How many rows are in these files?
-
-Sometimes I will say records instead of rows and fields instead of columns.
-
-```{r}
-office_ratings %>% 
-  count()
-```
-
-## How many episodes in each season?
-
-```{r}
-office_ratings %>% 
-  mutate(season = as_factor(season)) %>% 
-  count(season) %>% 
-  ggplot(aes(x = season, y = n)) +
-  geom_col()
-```
-
-## Why are there only 14 episodes in season 4?
-
-```{r}
-office_ratings %>% 
-  filter(season == 4)
-```
-
-
 Below I present analysis of The Office television series that ran on NBC from 2005 to 2013. The data is grouped by season and episode, with IMDB ratings, and total IMDB votes.
 
 ## How many episodes in each season?
@@ -119,24 +92,16 @@ office_ratings %>%
 office_ratings %>% 
   arrange(desc(imdb_rating)) %>% 
   head(10) %>% 
-  mutate(`#` = row_number()) %>% 
+  mutate(`#` = row_number()) %>% # SOMETHING NEW INTRODUCED
   select(`#`, Season = season, Episode = episode, Title = title, `IMDB Rating` = imdb_rating) %>% 
-  kable() 
+  kable() # SOMETHING NEW INTRODUCED
 ```
 
 ## Is there a relationship between the IMDB rating and the number of votes?
 
-```{r}
-
-office_ratings %>% 
-  filter(total_votes < 4000) %>% 
-  ggplot(aes(x = total_votes, y = imdb_rating)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = FALSE)
-```
-
-
 ```{r fig.height=5}
+ustr::theme_set_ust_doc()
+
 office_ratings %>% 
   ggplot(aes(x = total_votes, y = imdb_rating)) +
   geom_point() + # SOMETHING NEW INTRODUCED
@@ -152,66 +117,6 @@ office_ratings %>%
   theme(panel.grid.minor.x = element_blank(),
         panel.grid.minor.y = element_blank()) -> p
 
-p
-
-# ggsave("office_imdb.png", p, height = 5, width = 6.5, dpi = 1000, device = "png")
+ggsave("office_imdb.png", p, height = 5, width = 6.5, dpi = 1000, device = "png")
 ```
-
-## Working with median IMDB ratings
-
-Here we see the median and mean are quality stats because they accurately depict the most common/typical imdb rating (there's a normal distribution).
-
-```{r}
-office_ratings_summary <- office_ratings %>% 
-  summarize(avg_imdb_rating = mean(imdb_rating),
-            median_imdb_rating = median(imdb_rating))
-
-office_ratings %>%
-  ggplot(aes(x = imdb_rating)) +
-  geom_histogram(binwidth = 0.1, color = "white") +
-  geom_vline(data = office_ratings_summary, aes(xintercept = avg_imdb_rating), linetype = 5) + # geom_vline()
-  geom_vline(data = office_ratings_summary, aes(xintercept = median_imdb_rating), linetype = 6)
-
-
-office_ratings_median <- office_ratings %>% 
-  mutate(above_median = if_else(imdb_rating >= office_ratings_summary$median_imdb_rating, "Above median", "Below median"))
-
-
-office_ratings_median %>% 
-  mutate(above_median = fct_rev(above_median),
-         season = as.factor(season)) %>% 
-  count(season, above_median) %>% 
-  ggplot(aes(x = season, y = n, fill = above_median)) +
-  geom_col(position = "fill")
-
-
-```
-
-What proportion of lower IMDB ratings happened after season 8?
-
-```{r}
-office_ratings_median %>% 
-  filter(above_median == "Below median") %>% 
-  count(season) %>% 
-  mutate(season = as.factor(season)) %>% 
-  ggplot(aes(x = season, y = n, group = 1)) +
-  geom_line(color = "dark gray") +
-  geom_point(color = "dark gray") +
-  scale_y_continuous(limits = c(0, NA))
-
-```
-
-
-```{r}
-office_ratings %>% 
-  arrange(desc(imdb_rating)) %>% 
-  head(5) %>% 
-  kable(caption = "Top Five Episodes by IMDB Ratings",
-        row.names = TRUE,
-        col.names = c("Season", "Episode No.", "Title", "IMDB Rating", "Total Votes", "Air Date"),
-        format.args = list(big.mark = ",", ))
-```
-
-
-
 

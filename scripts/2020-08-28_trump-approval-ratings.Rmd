@@ -1,0 +1,105 @@
+---
+title: "Trump Approval Ratings"
+author: "Pete Talbert"
+date: "8/28/2020"
+output: 
+  word_document:
+    reference_docx: "../templates/word-styles-office-2016.docx"
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.width = 5, message = FALSE, warning = FALSE, cache = FALSE, dpi = 700)
+
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(knitr)
+
+theme_set(theme_minimal(base_size = 10))
+
+trump <- read_csv("https://projects.fivethirtyeight.com/trump-approval-data/approval_topline.csv")
+```
+
+## Let's try to recreate the plot!
+
+The plot from [here](https://projects.fivethirtyeight.com/trump-approval-ratings/).
+
+```{r}
+trump %>% 
+  mutate(modeldate = mdy(modeldate)) %>% 
+  filter(subgroup == "All polls") %>% 
+  ggplot(aes(x = modeldate, y = approve_estimate)) +
+  geom_line() +
+  scale_y_continuous(limits = c(20, 80))
+```
+
+Not bad! But wait, I need approve and dissaprove pivoted so I can plot them together.
+
+```{r}
+trump_piv <- trump %>% 
+  pivot_longer(cols = c(approve_estimate, approve_hi, approve_lo, disapprove_estimate, disapprove_hi, disapprove_lo),
+               names_to = "rating_type",
+               values_to = "rating") %>% 
+  mutate(modeldate = mdy(modeldate))
+```
+
+There we go! Okay, now let's work with `trump_piv`.
+
+```{r}
+trump_piv %>% 
+  filter(subgroup == "All polls", rating_type %in% c("approve_estimate", "disapprove_estimate")) %>% 
+  ggplot(aes(x = modeldate, y = rating, color = rating_type)) +
+  geom_line(size = 1) +
+  scale_color_manual(values = c("#009F29", "#FF7400")) +
+  scale_y_continuous(limits = c(20, 80)) +
+  labs(
+    title = "How popular is Donald Trump?"
+  )
+```
+
+What about the ribbon around each line? Quite a bit more work to do.
+
+```{r}
+trump_approve <- trump %>% 
+  select(president, subgroup, modeldate, timestamp, approve_estimate, approve_hi, approve_lo) %>% 
+  mutate(modeldate = mdy(modeldate), 
+         pos_neg = "Approve") %>% 
+  pivot_longer(cols = c(approve_estimate, approve_hi, approve_lo),
+               names_to = "rating_type",
+               values_to = "rating") %>% 
+  mutate(rating_type = str_remove(rating_type, "approve_"))
+
+trump_disapprove <- trump %>% 
+  select(president, subgroup, modeldate, timestamp, disapprove_estimate, disapprove_hi, disapprove_lo) %>% 
+  mutate(modeldate = mdy(modeldate), 
+         pos_neg = "Disapprove") %>% 
+  pivot_longer(cols = c(disapprove_estimate, disapprove_hi, disapprove_lo),
+               names_to = "rating_type",
+               values_to = "rating") %>% 
+  mutate(rating_type = str_remove(rating_type, "disapprove_"))
+
+trump_piv_new <- bind_rows(trump_approve, trump_disapprove)
+
+trump_piv_new %>% 
+  pivot_wider(names_from = "rating_type",
+              values_from = "rating") %>% 
+  filter(subgroup == "All polls") %>% # no more filtering out lines
+  ggplot(aes(x = modeldate, y = estimate, ymin = lo, ymax = hi)) +
+  geom_line(aes(color = pos_neg), size = 1) +
+  geom_ribbon(aes(fill = pos_neg), alpha = 0.3) +
+  scale_fill_manual(values = c("#009F29", "#FF7400")) +
+  scale_color_manual(values = c("#009F29", "#FF7400")) +
+  scale_y_continuous(limits = c(20, 80)) +
+  theme(legend.position = "bottom", plot.title = element_text(face = "bold")) +
+  labs(
+    title = "How popular is Donald Trump?",
+    subtitle = "An updating calculation of the president's approval rating,\naccounting for each poll's quality, recency, sample size and partisan lean.",
+    x = element_blank(),
+    y = element_blank(),
+    color = element_blank(),
+    fill = element_blank(),
+    caption = "Data from projects.fivethirtyeight.com/trump-approval-ratings."
+  )
+```
+
+Cleaning up!
