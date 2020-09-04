@@ -82,7 +82,7 @@ marriage_long_new %>%
   facet_wrap(~ age) +
   scale_color_manual(values = c("#EF924D", "#F3D3B2", "#D74903")) +
   scale_y_continuous(labels = percent_format(accuracy = 1)) +
-  theme(plot.title = element_text(face = "bold"), legend.position = "none", plot.background = element_rect(fill = "#F0F0F0"), panel.grid = element_line(color = "#D2D2D2"), panel.border = element_blank()) +
+  theme(plot.title = element_text(face = "bold"), legend.position = "none", plot.background = element_rect(fill = "#F0F0F0", color = NA)) +
   labs(
     title = "Marriage Rates by Education",
     subtitle = "Change since 1980",
