@@ -141,10 +141,10 @@ tuition_cost_um %>%
 Works fine, but how in the world would I *plot* something like this? Would have to go one at a time for each cost (because they're each in a different column).
 
 ```{r}
-tuition_cost_um %>% 
+tuition_cost %>% 
   pivot_longer(cols = c(room_and_board, in_state_tuition, in_state_total, out_of_state_tuition, out_of_state_total), 
                names_to = "cost_type", 
-               values_to = "cost") %>% filter(str_detect(name, "Iowa"))
+               values_to = "cost") %>% 
   group_by(state, cost_type) %>% 
   summarize(avg_cost = mean(cost))
 ```
