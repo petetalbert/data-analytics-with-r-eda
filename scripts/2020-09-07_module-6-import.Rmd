@@ -1,0 +1,41 @@
+---
+title: "Marriage"
+author: "Pete Talbert"
+date: "9/3/2020"
+output: 
+  word_document:
+    reference_docx: "../templates/word-styles-office-2016.docx"
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.width = 5, message = FALSE, warning = FALSE, cache = FALSE, dpi = 700)
+
+library(tidyverse)
+```
+
+## Excel
+
+```{r}
+library(readxl)
+
+readxl_example("deaths.xlsx")
+
+data <- read_xlsx("./data/celebrities.xlsx")
+
+data <- read_xlsx("./data/celebrities.xlsx", range = "A5:F15")
+
+```
+
+## Web APIs
+
+```{r}
+library(httr)
+library(jsonlite)
+
+res <- GET("http://api.open-notify.org/astros.json")
+data_list <- fromJSON(content(res, as = "text"), flatten = TRUE)
+data <- as_tibble(data_list$people)
+
+data
+```
+
